@@ -1,0 +1,8 @@
+# Compiled initial-utilities binaries
+initial-utilities/wcat/wcat
+initial-utilities/wgrep/wgrep
+initial-utilities/wzip/wzip
+initial-utilities/wunzip/wunzip
+
+# Test runner output
+initial-utilities/*/tests-out/
