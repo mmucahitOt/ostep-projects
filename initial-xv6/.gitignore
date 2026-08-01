@@ -1,0 +1,6 @@
+# Test runner output
+tests-out/
+
+# Copies and build products produced by the tester
+src/test_*.c
+src/Makefile.test
