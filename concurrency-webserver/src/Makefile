@@ -23,7 +23,9 @@ spin.cgi: spin.c
 	$(CC) $(CFLAGS) -o $@ -c $<
 
 clean:
-	-rm -f $(OBJS) wserver wclient spin.cgi
+	-rm -f $(OBJS) wserver wclient spin.cgi request_buffer_test request_buffer.o request_buffer_test.o
+
+CFLAGS = -Wall -pthread
 
 buffer_test: request_buffer_test.o request_buffer.o
 	$(CC) $(CFLAGS) -o request_buffer_test request_buffer_test.o request_buffer.o
