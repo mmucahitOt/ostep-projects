@@ -7,15 +7,19 @@ thread; it will be your job to make the web server multi-threaded so that it
 can handle multiple requests at the same time.
 
 The goals of this project are:
+
 - To learn the basic architecture of a simple web server
 - To learn how to add concurrency to a non-concurrent system
 - To learn how to read and modify an existing code base effectively
 
 Useful reading from [OSTEP](http://ostep.org) includes:
+
 - [Intro to threads](http://pages.cs.wisc.edu/~remzi/OSTEP/threads-intro.pdf)
 - [Using locks](http://pages.cs.wisc.edu/~remzi/OSTEP/threads-intro.pdf)
 - [Producer-consumer relationships](http://pages.cs.wisc.edu/~remzi/OSTEP/threads-cv.pdf)
 - [Server concurrency architecture](http://pages.cs.wisc.edu/~remzi/OSTEP/threads-events.pdf)
+
+
 
 # HTTP Background
 
@@ -76,14 +80,13 @@ arguments after the file name. For example, to just run a program (`test.cgi`)
 without any arguments, the client might use the URL
 `http://www.cs.wisc.edu/test.cgi`. To specify more arguments, the `?` and `&`
 characters are used, with the `?` character to separate the file name from the
-arguments and the `& character to separate each argument from the others.  For
-example, `http://www.cs.wisc.edu/test.cgi?x=10&y=20` can be used to send
+arguments and the `& character to separate each argument from the others.  For example,` [http://www.cs.wisc.edu/test.cgi?x=10&y=20`](http://www.cs.wisc.edu/test.cgi?x=10&y=20`) can be used to send
 multiple arguments `x` and `y` and their respective values to the program
 `test.cgi`. The program being run is called a **CGI program** (short for
 [Common Gateway
 Interface](https://en.wikipedia.org/wiki/Common_Gateway_Interface); yes, this
 is a terrible name); the arguments are passed into the program as part of the
-[`QUERY_STRING`](https://en.wikipedia.org/wiki/Query_string) environment
+`[QUERY_STRING](https://en.wikipedia.org/wiki/Query_string)` environment
 variable, which the program can then parse to access these arguments.
 
 # The HTTP Request
@@ -170,7 +173,7 @@ that it can handle new input parameters (e.g., the number of threads to
 create).
 
 ## Part 1: Multi-threaded
- 
+
 The basic web server that we provided has a single thread of
 control. Single-threaded web servers suffer from a fundamental performance
 problem in that only a single HTTP request can be serviced at a time. Thus,
@@ -250,7 +253,6 @@ server is started and are as follows:
 first request (i.e., the oldest request) in the buffer. Note that the HTTP
 requests will not necessarily finish in FIFO order; the order in which the
 requests complete will depend upon how the OS schedules the active threads.
-
 - ** Smallest File First (SFF)**: When a worker thread wakes, it handles the
 request for the smallest file. This policy approximates Shortest Job First to
 the extent that the size of the file is a good prediction of how long it takes
@@ -263,97 +265,4 @@ this scheduling policy, you will need to do some initial processing of the
 request (hint: using `stat()` on the filename) outside of the worker threads;
 you will probably want the master thread to perform this work, which requires
 that it read from the network descriptor.
-
-## Security
-
-Running a networked server can be dangerous, especially if you are not
-careful. Thus, security is something you should consider carefully when
-creating a web server. One thing you should always make sure to do is not
-leave your server running beyond testing, thus leaving open a potential
-backdoor into files in your system.
-
-Your system should also make sure to constrain file requests to stay within
-the sub-tree of the file system hierarchy, rooted at the base working
-directory that the server starts in. You must take steps to ensure that
-pathnames that are passed in do not refer to files outside of this sub-tree. 
-One simple (perhaps overly conservative) way to do this is to reject any
-pathname with `..` in it, thus avoiding any traversals up the file system
-tree. More sophisticated solutions could use `chroot()` or Linux containers,
-but perhaps those are beyond the scope of the project.
-
-## Command-line Parameters
-
-Your C program must be invoked exactly as follows:
-
-```sh
-prompt> ./wserver [-d basedir] [-p port] [-t threads] [-b buffers] [-s schedalg]
-```
-
-The command line arguments to your web server are to be interpreted as
-follows.
-
-- **basedir**: this is the root directory from which the web server should
-  operate. The server should try to ensure that file accesses do not access
-  files above this directory in the file-system hierarchy. Default: current
-  working directory (e.g., `.`).
-- **port**: the port number that the web server should listen on; the basic web
-  server already handles this argument. Default: 10000.
-- **threads**: the number of worker threads that should be created within the web
-  server. Must be a positive integer. Default: 1.
-- **buffers**: the number of request connections that can be accepted at one
-  time. Must be a positive integer. Note that it is not an error for more or
-  less threads to be created than buffers. Default: 1.
-- **schedalg**: the scheduling algorithm to be performed. Must be one of FIFO
-  or SFF. Default: FIFO.
-
-For example, you could run your program as:
-```
-prompt> server -d . -p 8003 -t 8 -b 16 -s SFF
-```
-
-In this case, your web server will listen to port 8003, create 8 worker threads for
-handling HTTP requests, allocate 16 buffers for connections that are currently
-in progress (or waiting), and use SFF scheduling for arriving requests.
-
-# Source Code Overview
-
-We recommend understanding how the code that we gave you works.  We provide
-the following files:
-
-- [`wserver.c`](https://github.com/remzi-arpacidusseau/ostep-projects/blob/master/concurrency-webserver/src/wserver.c): Contains `main()` for the web server and the basic serving loop.
-- [`request.c`](https://github.com/remzi-arpacidusseau/ostep-projects/blob/master/concurrency-webserver/src/request.c): Performs most of the work for handling requests in the basic
-  web server. Start at `request_handle()` and work through the logic from
-  there. 
-- [`io_helper.h`](https://github.com/remzi-arpacidusseau/ostep-projects/blob/master/concurrency-webserver/src/io_helper.h) and [`io_helper.c`](https://github.com/remzi-arpacidusseau/ostep-projects/blob/master/concurrency-webserver/src/io_helper.c): Contains wrapper functions for the system calls invoked by
-  the basic web server and client. The convention is to add `_or_die` to an
-  existing call to provide a version that either succeeds or exits. For
-  example, the `open()` system call is used to open a file, but can fail for a
-  number of reasons. The wrapper, `open_or_die()`, either successfully opens a
-  file or exists upon failure. 
-- [`wclient.c`](https://github.com/remzi-arpacidusseau/ostep-projects/blob/master/concurrency-webserver/src/wclient.c): Contains main() and the support routines for the very simple
-  web client. To test your server, you may want to change this code so that it
-  can send simultaneous requests to your server. By launching `wclient`
-  multiple times, you can test how your server handles concurrent requests.
-- [`spin.c`](https://github.com/remzi-arpacidusseau/ostep-projects/blob/master/concurrency-webserver/src/spin.c): A simple CGI program. Basically, it spins for a fixed amount
-  of time, which you may useful in testing various aspects of your server.  
-- [`Makefile`](https://github.com/remzi-arpacidusseau/ostep-projects/blob/master/concurrency-webserver/src/Makefile): We also provide you with a sample Makefile that creates
-  `wserver`, `wclient`, and `spin.cgi`. You can type make to create all of 
-  these programs. You can type make clean to remove the object files and the
-  executables. You can type make server to create just the server program,
-  etc. As you create new files, you will need to add them to the Makefile.
-
-The best way to learn about the code is to compile it and run it. Run the
-server we gave you with your preferred web browser. Run this server with the
-client code we gave you. You can even have the client code we gave you contact
-any other server that speaks HTTP. Make small changes to the server code
-(e.g., have it print out more debugging information) to see if you understand
-how it works.
-
-## Additional Useful Reading
-
-We anticipate that you will find the following routines useful for creating
-and synchronizing threads: `pthread_create()`, `pthread_mutex_init()`,
-`pthread_mutex_lock()`, `pthread_mutex_unlock()`, `pthread_cond_init()`,
-`pthread_cond_wait()`, `pthread_cond_signal()`. To find information on these
-library routines, read the man pages (RTFM). 
 

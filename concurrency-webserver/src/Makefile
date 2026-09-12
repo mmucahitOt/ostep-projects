@@ -24,3 +24,8 @@ spin.cgi: spin.c
 
 clean:
 	-rm -f $(OBJS) wserver wclient spin.cgi
+
+buffer_test: request_buffer_test.o request_buffer.o
+	$(CC) $(CFLAGS) -o request_buffer_test request_buffer_test.o request_buffer.o
+
+# optional: add buffer_test to all, or build explicitly
