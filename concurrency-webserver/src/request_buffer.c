@@ -14,7 +14,41 @@ static sched_policy_t  policy = SCHED_FIFO;
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  not_full  = PTHREAD_COND_INITIALIZER;
-static pthread_cond_t  not_empty = PTHREAD_COND_INITIALIZER;
+static pthread_cond_t not_empty = PTHREAD_COND_INITIALIZER;
+
+static int occupied_index(int k) {
+    /* k = 0 .. count-1, oldest first */
+    return (out_idx + k) % capacity;
+}
+static int pick_index(void) {
+    if (policy == SCHED_FIFO)
+        return out_idx;
+    /* SFF: smallest filesize; unknown (-1) counts as "very large"
+     * tie → older request (smaller k) so all -1 acts like FIFO
+     */
+    int best_k = 0;
+    int best_size = slots[occupied_index(0)].filesize;
+    if (best_size < 0)
+        best_size = 0x7fffffff; /* INT_MAX */
+    for (int k = 1; k < count; k++) {
+        int sz = slots[occupied_index(k)].filesize;
+        if (sz < 0)
+            sz = 0x7fffffff;
+        if (sz < best_size) {
+            best_size = sz;
+            best_k = k;
+        }
+    }
+    return occupied_index(best_k);
+}
+static void remove_at(int idx, request_t *out) {
+    request_t tmp = slots[idx];
+    slots[idx] = slots[out_idx];
+    slots[out_idx] = tmp;
+    *out = slots[out_idx];
+    out_idx = (out_idx + 1) % capacity;
+    count--;
+}
 
 void buffer_init(int cap, sched_policy_t pol) {
     assert(cap >= 1);
@@ -68,13 +102,9 @@ void buffer_consume(request_t *out) {
         pthread_cond_wait(&not_empty, &mutex);
 
     assert(slots != NULL);
-    (void)policy; /* SFF later */
+    remove_at(pick_index(), out);
 
-    *out = slots[out_idx];
-    out_idx = (out_idx + 1) % capacity;
-    count--;
-
-    pthread_cond_signal(&not_full);   /* wake one producer */
+    pthread_cond_signal(&not_full);
     pthread_mutex_unlock(&mutex);
 }
 
