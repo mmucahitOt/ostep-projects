@@ -79,6 +79,42 @@ int request_parse_uri(char *uri, char *filename, char *cgiargs) {
     }
 }
 
+int request_peek_filesize(int fd) {
+    char buf[MAXBUF];
+    ssize_t n;
+
+    /* Block until the first line is in the socket (typical curl/wclient). */
+    for (;;) {
+        n = recv(fd, buf, sizeof(buf) - 1, MSG_PEEK);
+        if (n < 0) {
+            if (errno == EINTR)
+                continue;
+            return -1;
+        }
+        if (n == 0)
+            return -1; /* client closed */
+        buf[n] = '\0';
+        if (memchr(buf, '\n', (size_t)n) != NULL)
+            break;
+        usleep(1000); /* incomplete line; data still in kernel */
+    }
+
+    char method[MAXBUF], uri[MAXBUF], version[MAXBUF];
+    if (sscanf(buf, "%s %s %s", method, uri, version) != 3)
+        return -1;
+    if (strcasecmp(method, "GET") != 0)
+        return -1;
+
+    char filename[MAXBUF], cgiargs[MAXBUF];
+    request_parse_uri(uri, filename, cgiargs); /* uri is our copy from sscanf */
+
+    struct stat sbuf;
+    if (stat(filename, &sbuf) < 0)
+        return -1; /* 404 later in the worker; treat as unknown size */
+
+    return (int)sbuf.st_size;
+}
+
 //
 // Fills in the filetype given the filename
 //
